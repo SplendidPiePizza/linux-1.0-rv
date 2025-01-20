@@ -7,7 +7,6 @@
 /* This implements the sysinfo() system call */
 
 #include <asm/segment.h>
-
 #include <linux/sched.h>
 #include <linux/string.h>
 #include <linux/unistd.h>
@@ -16,27 +15,39 @@
 
 asmlinkage int sys_sysinfo(struct sysinfo *info)
 {
-	int error;
-	struct sysinfo val;
-	struct task_struct **p;
+    int error;
+    struct sysinfo val;
+    struct task_struct *task;
 
-	error = verify_area(VERIFY_WRITE, info, sizeof(struct sysinfo));
-	if (error)
-		return error;
-	memset((char *)&val, 0, sizeof(struct sysinfo));
+    
+    error = verify_area(VERIFY_WRITE, info, sizeof(struct sysinfo));
+    if (error)
+        return error;
 
-	val.uptime = jiffies / HZ;
+    
+    memset(&val, 0, sizeof(struct sysinfo));
 
-	val.loads[0] = avenrun[0] << (SI_LOAD_SHIFT - FSHIFT);
-	val.loads[1] = avenrun[1] << (SI_LOAD_SHIFT - FSHIFT);
-	val.loads[2] = avenrun[2] << (SI_LOAD_SHIFT - FSHIFT);
+    // time period in second
+    val.uptime = jiffies / HZ;
 
-	for (p = &LAST_TASK; p > &FIRST_TASK; p--)
-		if (*p) val.procs++;
+    
+    val.loads[0] = avenrun[0] << (SI_LOAD_SHIFT - FSHIFT);
+    val.loads[1] = avenrun[1] << (SI_LOAD_SHIFT - FSHIFT);
+    val.loads[2] = avenrun[2] << (SI_LOAD_SHIFT - FSHIFT);
 
-	si_meminfo(&val);
-	si_swapinfo(&val);
+    // Iterate over all tasks and count them
+    for_each_process(task) {
+        val.procs++;
+    }
 
-	memcpy_tofs(info, &val, sizeof(struct sysinfo));
-	return 0;
+    
+    si_meminfo(&val);
+
+    
+    si_swapinfo(&val);
+
+    // why invent a new function for the same thing? What a mess.
+    memcpy(info, &val, sizeof(struct sysinfo)); 
+
+    return 0;
 }
