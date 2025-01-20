@@ -21,63 +21,76 @@
 #include <asm/segment.h>
 #include <asm/io.h>
 
-/*
- * this indicates wether you can reboot with ctrl-alt-del: the default is yes
- */
+
 static int C_A_D = 1;
 
 extern void adjust_clock(void);
 
 #define	PZERO	15
 
+
 static int proc_sel(struct task_struct *p, int which, int who)
 {
-	switch (which) {
-		case PRIO_PROCESS:
-			if (!who && p == current)
-				return 1;
-			return(p->pid == who);
-		case PRIO_PGRP:
-			if (!who)
-				who = current->pgrp;
-			return(p->pgrp == who);
-		case PRIO_USER:
-			if (!who)
-				who = current->uid;
-			return(p->uid == who);
-	}
-	return 0;
+    switch (which) {
+        case PRIO_PROCESS:
+            
+            if (!who && p == current)
+                return 1; // Oh, look, it’s the current process. Big surprise. We match it.
+            return p->pid == who; 
+        case PRIO_PGRP:
+            
+            if (!who)
+                who = current->pgrp; 
+            return p->pgrp == who; 
+        case PRIO_USER:
+            
+            if (!who)
+                who = current->uid; 
+            return p->uid == who; 
+    }
+    return 0; // No match, whatever.
 }
 
+// System call to set process priority
 asmlinkage int sys_setpriority(int which, int who, int niceval)
 {
-	struct task_struct **p;
-	int error = ESRCH;
-	int priority;
+    struct task_struct **p;
+    int error = ESRCH; // Default error is ESRCH because why not? This means no process found. Shocking.
+    int priority;
 
-	if (which > 2 || which < 0)
-		return -EINVAL;
+   
+    if (which > 2 || which < 0)
+        return -EINVAL; // Oh wow, this god damn invalid argument. Like we didn’t see that coming.
 
-	if ((priority = PZERO - niceval) <= 0)
-		priority = 1;
+    // Calculate the priority: adjust based on 'niceval'
+    if ((priority = PZERO - niceval) <= 0)
+        priority = 1; // Wow, you messed up the nice value so badly, it had to be set to 1. Nice job.
 
-	for(p = &LAST_TASK; p > &FIRST_TASK; --p) {
-		if (!*p || !proc_sel(*p, which, who))
-			continue;
-		if ((*p)->uid != current->euid &&
-			(*p)->uid != current->uid && !suser()) {
-			error = EPERM;
-			continue;
-		}
-		if (error == ESRCH)
-			error = 0;
-		if (priority > (*p)->priority && !suser())
-			error = EACCES;
-		else
-			(*p)->priority = priority;
-	}
-	return -error;
+    
+    for (p = &LAST_TASK; p > &FIRST_TASK; --p) {
+        if (!*p || !proc_sel(*p, which, who)) 
+            continue; // fuck it, If it doesn't match, just skip. Whatever.
+
+        // Check if the current process has permission to change the task's priority
+        if ((*p)->uid != current->euid && 
+            (*p)->uid != current->uid && !suser()) {
+            error = EPERM; // Oh damn, you don't have permission. Shocker.
+            continue; 
+        }
+
+
+        if (error == ESRCH)
+            error = 0; 
+        if (priority > (*p)->priority && !suser()) {
+            error = EACCES; 
+        } else {
+            (*p)->priority = priority; // Finally, set the priority. After all those checks. Good job.
+        }
+    }
+    
+    return -error; 
 }
+
 
 asmlinkage int sys_getpriority(int which, int who)
 {
