@@ -1,5 +1,5 @@
 
-	# Linux kernel release 1.0
+ ## linux kernel 1.0
 
 These are the release notes for linux version 1.0.  Read them carefully,
 as they tell you what this is all about, explain how to install the
