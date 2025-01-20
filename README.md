@@ -1,9 +1,10 @@
 
- ## linux kernel 1.0
+ ## linux kernel 1.0 revamped
 
 These are the release notes for linux version 1.0.  Read them carefully,
 as they tell you what this is all about, explain how to install the
 kernel, and what to do if something goes wrong. 
+I probably fucked up the code...
 
 ## WHAT IS LINUX?
 
