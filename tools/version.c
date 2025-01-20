@@ -9,13 +9,12 @@
 #include <linux/config.h>
 #include <linux/utsname.h>
 
-#include "./version.h"
+#include "version.h"  // Of course ./version.h
 
 struct new_utsname system_utsname = {
-	UTS_SYSNAME, UTS_NODENAME, UTS_RELEASE, UTS_VERSION,
-	UTS_MACHINE, UTS_DOMAINNAME
+    UTS_SYSNAME, UTS_NODENAME, UTS_RELEASE, UTS_VERSION,
+    UTS_MACHINE, UTS_DOMAINNAME
 };
 
 char *linux_banner = 
-	"Linux version " UTS_RELEASE " (" LINUX_COMPILE_BY "@"
-	LINUX_COMPILE_HOST ") " UTS_VERSION "\n";
+    "Linux version " UTS_RELEASE " (" LINUX_COMPILE_BY "@" LINUX_COMPILE_HOST ") " UTS_VERSION "\n";
