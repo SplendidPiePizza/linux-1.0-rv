@@ -1,11 +1,11 @@
 
-	Linux kernel release 1.0
+	# Linux kernel release 1.0
 
 These are the release notes for linux version 1.0.  Read them carefully,
 as they tell you what this is all about, explain how to install the
 kernel, and what to do if something goes wrong. 
 
-WHAT IS LINUX?
+## WHAT IS LINUX?
 
   Linux is a Unix clone for 386/486-based PCs written from scratch by
   Linus Torvalds with assistance from a loosely-knit team of hackers
@@ -19,7 +19,7 @@ WHAT IS LINUX?
   It is distributed under the GNU General Public License - see the
   accompanying COPYING file for more details. 
 
-INSTALLING the kernel:
+## INSTALLING the kernel:
 
  - If you install the full sources, do a
 
@@ -55,7 +55,7 @@ INSTALLING the kernel:
 
    You should now have the sources correctly installed.
 
-CONFIGURING the kernel:
+## CONFIGURING the kernel:
 
  - do a "make config" to configure the basic kernel.  "make config"
    needs bash to work: it will search for bash in $BASH, /bin/bash and
@@ -89,7 +89,7 @@ CONFIGURING the kernel:
 
  - Finally, do a "make dep" to set up all the dependencies correctly. 
 
-COMPILING the kernel:
+## COMPILING the kernel:
 
  - make sure you have gcc-2.4.5 or newer available.  It seems older gcc
    versions can have problems compiling newer versions of linux.  If you
