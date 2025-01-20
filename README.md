@@ -136,11 +136,7 @@ kernel, and what to do if something goes wrong.
 
 IF SOMETHING GOES WRONG:
 
- - if you have problems that seem to be due to kernel bugs, please mail
-   them to me (Linus.Torvalds@Helsinki.FI), and possibly to any other
-   relevant mailing-list or to the newsgroup.  The mailing-lists are
-   useful especially for SCSI and NETworking problems, as I can't test
-   either of those personally anyway. 
+ - if you have problems that seem to be due to kernel bugs, please submit a github issue.  The mailing-lists are
 
  - In all bug-reports, *please* tell what kernel you are talking about,
    how to duplicate the problem, and what your setup is (use your common
