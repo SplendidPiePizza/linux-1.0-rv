@@ -1,67 +1,67 @@
 #include <linux/errno.h>
 #include <linux/kernel.h>
 #include <asm/segment.h>
-#include <linux/mm.h>		/* defines GFP_KERNEL */
+#include <linux/mm.h>      /* defines GFP_KERNEL */
 #include <linux/string.h>
 #include <linux/module.h>
 #include <linux/sched.h>
 #include <linux/malloc.h>
 
 struct module *module_list = NULL;
-int freeing_modules;		/* true if some modules are marked for deletion */
+int freeing_modules;      /* true if some modules are marked for deletion */
 
-struct module *find_module( const char *name);
-int get_mod_name( char *user_name, char *buf);
-int free_modules( void);
+struct module *find_module(const char *name);
+int get_mod_name(char *user_name, char *buf);
+int free_modules(void);
 
-/*
- * Allocate space for a module.
- */
-asmlinkage int
-sys_create_module(char *module_name, unsigned long size)
+asmlinkage int sys_create_module(char *module_name, unsigned long size)
 {
-	int npages;
-	void* addr;
-	int len;
-	char name[MOD_MAX_NAME];
-	char *savename;
-	struct module *mp;
-	int error;
+    int npages;
+    void* addr;
+    int len;
+    char name[MOD_MAX_NAME];
+    char *savename;
+    struct module *mp;
+    int error;
 
-	if (!suser())
-		return -EPERM;
-	if (module_name == NULL || size == 0)
-		return -EINVAL;
-	if ((error = get_mod_name(module_name, name)) != 0)
-		return error;
-	if (find_module(name) != NULL) {
-		return -EEXIST;
-	}
-	len = strlen(name) + 1;
-	if ((savename = (char*) kmalloc(len, GFP_KERNEL)) == NULL)
-		return -ENOMEM;
-	memcpy(savename, name, len);
-	if ((mp = (struct module*) kmalloc(sizeof *mp, GFP_KERNEL)) == NULL) {
-		kfree(savename);
-		return -ENOMEM;
-	}
-	npages = (size + sizeof (int) + 4095) / 4096;
-	if ((addr = vmalloc(npages * 4096)) == 0) {
-		kfree_s(mp, sizeof *mp);
-		kfree(savename);
-		return -ENOMEM;
-	}
-	mp->name = savename;
-	mp->size = npages;
-	mp->addr = addr;
-	mp->state = MOD_UNINITIALIZED;
-	* (int *) addr = 0;		/* set use count to zero */
-	mp->cleanup = NULL;
-	mp->next = module_list;
-	module_list = mp;
-	printk("module `%s' (%lu pages @ 0x%08lx) created\n",
-		mp->name, (unsigned long) mp->size, (unsigned long) mp->addr);
-	return (int) addr;
+    if (!suser())
+        return -EPERM;
+    if (module_name == NULL || size == 0)
+        return -EINVAL;
+    if ((error = get_mod_name(module_name, name)) != 0)
+        return error;
+    if (find_module(name) != NULL) {
+        return -EEXIST;
+    }
+    len = strlen(name) + 1;
+    if ((savename = kmalloc(len, GFP_KERNEL)) == NULL)
+        return -ENOMEM;
+    memcpy(savename, name, len);
+    if ((mp = kmalloc(sizeof *mp, GFP_KERNEL)) == NULL) {
+        kfree(savename);
+        return -ENOMEM;
+    }
+    npages = (size + sizeof(int) + 4095) / 4096;
+    if ((addr = vmalloc(npages * 4096)) == 0) {
+        kfree(mp);
+        kfree(savename);
+        return -ENOMEM;
+    }
+
+    mp->name = savename;
+    mp->size = npages;
+    mp->addr = addr;
+    mp->state = MOD_UNINITIALIZED;
+    *(int *) addr = 0;  // set use count to zero
+    mp->cleanup = NULL;
+    mp->next = module_list;
+    module_list = mp;
+
+    printk("module `%s' (%lu pages @ 0x%08lx) created\n",
+           mp->name, (unsigned long) mp->size, (unsigned long) mp->addr);
+
+    // SCARY! This could lead to dangerous memory issues.
+    return (uintptr_t) addr;
 }
 
 /*
