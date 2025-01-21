@@ -14,113 +14,132 @@
 
 #include <asm/segment.h>
 
-static unsigned long tvtojiffies(struct timeval *value)
+static unsigned long tv_to_jiffies(struct timeval *value)
 {
-	return((unsigned long )value->tv_sec * HZ +
-		(unsigned long )(value->tv_usec + (1000000 / HZ - 1)) /
-		(1000000 / HZ));
+    return (unsigned long)value->tv_sec * HZ +
+           (unsigned long)(value->tv_usec + (1000000 / HZ - 1)) /
+               (1000000 / HZ);
 }
 
-static void jiffiestotv(unsigned long jiffies, struct timeval *value)
+static void jiffies_to_tv(unsigned long jiffies, struct timeval *value)
 {
-	value->tv_usec = (jiffies % HZ) * (1000000 / HZ);
-	value->tv_sec = jiffies / HZ;
-	return;
+    value->tv_usec = (jiffies % HZ) * (1000000 / HZ); // Who thought mixing this bullshit timeval and jiffies was a good idea?! This is pathetic.
+    value->tv_sec = jiffies / HZ;
 }
 
-int _getitimer(int which, struct itimerval *value)
+int get_itimer(int which, struct itimerval *value)
 {
-	register unsigned long val, interval;
+    unsigned long val, interval;
 
-	switch (which) {
-	case ITIMER_REAL:
-		val = current->it_real_value;
-		interval = current->it_real_incr;
-		break;
-	case ITIMER_VIRTUAL:
-		val = current->it_virt_value;
-		interval = current->it_virt_incr;
-		break;
-	case ITIMER_PROF:
-		val = current->it_prof_value;
-		interval = current->it_prof_incr;
-		break;
-	default:
-		return(-EINVAL);
-	}
-	jiffiestotv(val, &value->it_value);
-	jiffiestotv(interval, &value->it_interval);
-	return(0);
+    switch (which)
+    {
+    case ITIMER_REAL:
+        val = current->it_real_value;
+        interval = current->it_real_incr;
+        break;
+    case ITIMER_VIRTUAL:
+        val = current->it_virt_value;
+        interval = current->it_virt_incr;
+        break;
+    case ITIMER_PROF:
+        val = current->it_prof_value;
+        interval = current->it_prof_incr;
+        break;
+    default:
+        return -EINVAL;
+    }
+
+    jiffies_to_tv(val, &value->it_value);
+    jiffies_to_tv(interval, &value->it_interval);
+    return 0;
 }
 
 asmlinkage int sys_getitimer(int which, struct itimerval *value)
 {
-	int error;
-	struct itimerval get_buffer;
+    struct itimerval get_buffer;
+    int error;
 
-	if (!value)
-		return -EFAULT;
-	error = _getitimer(which, &get_buffer);
-	if (error)
-		return error;
-	error = verify_area(VERIFY_WRITE, value, sizeof(struct itimerval));
-	if (error)
-		return error;
-	memcpy_tofs(value, &get_buffer, sizeof(get_buffer));
-	return 0;
+    if (!value)
+        return -EFAULT;
+
+    error = get_itimer(which, &get_buffer);
+    if (error)
+        return error;
+
+    error = verify_area(VERIFY_WRITE, value, sizeof(struct itimerval));
+    if (error)
+        return error;
+
+    memcpy_tofs(value, &get_buffer, sizeof(get_buffer));
+    return 0;
 }
 
-int _setitimer(int which, struct itimerval *value, struct itimerval *ovalue)
+int set_itimer(int which, struct itimerval *value, struct itimerval *ovalue)
 {
-	register unsigned long i, j;
-	int k;
+    unsigned long interval, time_val;
+    int result;
 
-	i = tvtojiffies(&value->it_interval);
-	j = tvtojiffies(&value->it_value);
-	if (ovalue && (k = _getitimer(which, ovalue)) < 0)
-		return k;
-	switch (which) {
-		case ITIMER_REAL:
-			if (j) {
-				j += 1+itimer_ticks;
-				if (j < itimer_next)
-					itimer_next = j;
-			}
-			current->it_real_value = j;
-			current->it_real_incr = i;
-			break;
-		case ITIMER_VIRTUAL:
-			if (j)
-				j++;
-			current->it_virt_value = j;
-			current->it_virt_incr = i;
-			break;
-		case ITIMER_PROF:
-			if (j)
-				j++;
-			current->it_prof_value = j;
-			current->it_prof_incr = i;
-			break;
-		default:
-			return -EINVAL;
-	}
-	return 0;
+    interval = tv_to_jiffies(&value->it_interval);
+    time_val = tv_to_jiffies(&value->it_value);
+
+    if (ovalue)
+    {
+        result = get_itimer(which, ovalue);
+        if (result < 0)
+            return result;
+    }
+
+    switch (which)
+    {
+    case ITIMER_REAL:
+        if (time_val)
+        {
+            time_val += 1 + itimer_ticks;
+            if (time_val < itimer_next)
+                itimer_next = time_val;
+        }
+        current->it_real_value = time_val;
+        current->it_real_incr = interval;
+        break;
+
+    case ITIMER_VIRTUAL:
+        if (time_val)
+            time_val++;
+        current->it_virt_value = time_val;
+        current->it_virt_incr = interval;
+        break;
+
+    case ITIMER_PROF:
+        if (time_val)
+            time_val++;
+        current->it_prof_value = time_val;
+        current->it_prof_incr = interval;
+        break;
+
+    default:
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 asmlinkage int sys_setitimer(int which, struct itimerval *value, struct itimerval *ovalue)
 {
-	int error;
-	struct itimerval set_buffer, get_buffer;
+    struct itimerval set_buffer, get_buffer;
+    int error;
 
-	if (!value)
-		memset((char *) &set_buffer, 0, sizeof(set_buffer));
-	else
-		memcpy_fromfs(&set_buffer, value, sizeof(set_buffer));
-	error = _setitimer(which, &set_buffer, ovalue ? &get_buffer : 0);
-	if (error || !ovalue)
-		return error;
-	error = verify_area(VERIFY_WRITE, ovalue, sizeof(struct itimerval));
-	if (!error)
-		memcpy_tofs(ovalue, &get_buffer, sizeof(get_buffer));
-	return error;
+    if (!value)
+        memset(&set_buffer, 0, sizeof(set_buffer));
+    else
+        memcpy_fromfs(&set_buffer, value, sizeof(set_buffer));
+
+    error = set_itimer(which, &set_buffer, ovalue ? &get_buffer : NULL);
+    if (error || !ovalue)
+        return error;
+
+    error = verify_area(VERIFY_WRITE, ovalue, sizeof(struct itimerval));
+    if (!error)
+        memcpy_tofs(ovalue, &get_buffer, sizeof(get_buffer));
+
+    return error;
 }
